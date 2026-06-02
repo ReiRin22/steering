@@ -1,0 +1,631 @@
+:root {
+  --bg: #f5f7f8;
+  --panel: #ffffff;
+  --panel-2: #eef3f5;
+  --text: #182024;
+  --muted: #617079;
+  --line: #d8e0e4;
+  --accent: #167c80;
+  --accent-2: #9b5c18;
+  --danger: #aa3d3d;
+  --shadow: 0 12px 32px rgba(26, 38, 44, 0.08);
+
+  /* 実装チェックリスト色 */
+  --header-blue: #1F4E78;
+  --rec-blue: #B4C7E7;
+  --ord-green: #C6E0B4;
+  --etc-orange: #FFE699;
+  --dep-yellow: #FFF2CC;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family:
+    "Segoe UI",
+    "Noto Sans JP",
+    system-ui,
+    sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+.fileButton {
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  padding: 0 12px;
+  cursor: pointer;
+}
+
+button:hover,
+.fileButton:hover {
+  border-color: var(--accent);
+}
+
+.shell {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.topbar,
+.toolbar,
+.workspace,
+.summaryGrid {
+  width: 100%;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.topbar h1 {
+  margin: 2px 0 0;
+  font-size: 32px;
+  line-height: 1.15;
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.viewTabs {
+  display: inline-flex;
+  gap: 6px;
+  margin: 0 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 4px;
+}
+
+.viewTabs button {
+  min-width: 92px;
+  border: 0;
+  background: transparent;
+}
+
+.viewTabs button.isActive {
+  background: var(--accent);
+  color: #fff;
+}
+
+.fileButton {
+  display: inline-flex;
+  align-items: center;
+}
+
+.fileButton input {
+  display: none;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.summaryGrid article {
+  min-height: 86px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 14px 16px;
+  box-shadow: var(--shadow);
+}
+
+.summaryGrid span {
+  display: block;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.summaryGrid p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.toolbar {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) 180px 160px;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.searchWrap,
+.toolbar select {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.searchWrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+}
+
+.searchWrap span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.searchWrap input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+}
+
+.toolbar select {
+  padding: 0 10px;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 390px;
+  gap: 16px;
+  align-items: start;
+}
+
+.treeView {
+  display: block;
+  width: 100%;
+}
+
+.treeTabsPanel,
+.treeTablePanel {
+  min-height: 520px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  padding: 14px;
+}
+
+.treeTabsPanel h2,
+.treeTableHeader h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+
+.treeTabs {
+  display: grid;
+  gap: 8px;
+}
+
+.treeTab {
+  display: grid;
+  min-height: 48px;
+  align-items: center;
+  justify-items: start;
+  border-radius: 8px;
+  text-align: left;
+}
+
+.treeTab.isActive {
+  border-color: var(--accent);
+  box-shadow: inset 4px 0 0 var(--accent);
+}
+
+.treeTab small {
+  color: var(--muted);
+}
+
+.treeTableHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.tableScroller {
+  overflow: auto;
+}
+
+.progressTable {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.progressTable th,
+.progressTable td {
+  border-bottom: 1px solid var(--line);
+  padding: 10px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.progressTable th {
+  position: sticky;
+  top: 0;
+  background: var(--header-blue);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  z-index: 1;
+  border: 1px solid #ffffff;
+  padding: 8px 6px;
+  text-align: center;
+}
+
+.progressTable tr {
+  background: var(--row-bg, #fff);
+}
+
+.progressTable tr:hover {
+  outline: 1px solid var(--accent);
+}
+
+.tableFeatureName {
+  min-width: 180px;
+  font-weight: 700;
+}
+
+.tableProgress {
+  min-width: 190px;
+}
+
+.compactTrack {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 58px;
+  gap: 8px;
+  align-items: center;
+}
+
+.listPanel,
+.detailPanel {
+  min-height: 520px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.listPanel {
+  padding: 12px;
+}
+
+.cardList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+}
+
+.featureCard {
+  display: grid;
+  gap: 12px;
+  min-height: 178px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.featureCard:hover,
+.featureCard.isSelected {
+  border-color: var(--accent);
+}
+
+.cardTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.featureCard h2 {
+  margin: 3px 0 0;
+  font-size: 18px;
+  line-height: 1.3;
+}
+
+.statusBadge {
+  display: inline-flex;
+  min-width: 74px;
+  min-height: 26px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.statusBadge.implement,
+.statusBadge.review {
+  background: #e7f3f3;
+  color: var(--accent);
+}
+
+.statusBadge.blocked {
+  background: #faeeee;
+  color: var(--danger);
+}
+
+.statusBadge.done {
+  background: #edf4e8;
+  color: #477327;
+}
+
+.metaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.phaseTrack {
+  display: grid;
+  grid-template-columns: repeat(11, 1fr);
+  gap: 4px;
+}
+
+.layerTrack {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 58px;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.layerTrack strong {
+  color: var(--text);
+  font-size: 12px;
+  text-align: right;
+}
+
+.phaseDot {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--panel-2);
+}
+
+.phaseDot.done {
+  background: var(--accent);
+}
+
+.nextAction {
+  margin: 0;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.detailPanel {
+  position: sticky;
+  top: 16px;
+  padding: 18px;
+}
+
+.emptyDetail {
+  display: grid;
+  min-height: 480px;
+  place-items: center;
+  color: var(--muted);
+  text-align: center;
+}
+
+.detailForm {
+  display: grid;
+  gap: 14px;
+}
+
+.detailHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.detailHeader h2 {
+  margin: 4px 0 0;
+  font-size: 24px;
+  line-height: 1.25;
+}
+
+.detailForm label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.detailForm input,
+.detailForm select,
+.detailForm textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  padding: 10px;
+}
+
+.detailForm textarea {
+  resize: vertical;
+}
+
+.guideBox,
+.paths {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfc;
+  padding: 12px;
+}
+
+.guideBox h3,
+.paths h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.guideBox p {
+  margin: 0 0 8px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.guideBox ol {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.guideBox li {
+  margin: 4px 0;
+}
+
+.paths {
+  display: grid;
+  gap: 8px;
+}
+
+.paths a {
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.paths code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+}
+
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+#saveButton {
+  min-width: 96px;
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+@media (max-width: 920px) {
+  .shell {
+    padding: 16px;
+  }
+
+  .topbar,
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .summaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .treeView {
+    grid-template-columns: 1fr;
+  }
+
+  .detailPanel {
+    position: static;
+  }
+}
+
+/* Phase列の幅を制限 */
+.progressTable th:nth-child(n+6):nth-child(-n+16) {
+  min-width: 50px;
+  max-width: 50px;
+  font-size: 10px;
+}
+
+.progressTable td:nth-child(n+6):nth-child(-n+16) {
+  text-align: center;
+  min-width: 50px;
+  max-width: 50px;
+}
+
+/* 機能ID列の色分け */
+.progressTable tr[data-domain="REC"] {
+  background: var(--rec-blue);
+}
+
+.progressTable tr[data-domain="ORD"] {
+  background: var(--ord-green);
+}
+
+.progressTable tr[data-domain="ETC"] {
+  background: var(--etc-orange);
+}
+
+.progressTable tr[data-domain="DEP"] {
+  background: var(--dep-yellow);
+}
+
+/* チェックボックス風の○表示 */
+.progressTable .phase-check {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #666;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.progressTable .phase-check.done {
+  background: #4CAF50;
+  border-color: #4CAF50;
+}
