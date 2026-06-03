@@ -20,7 +20,7 @@
 
       <nav class="viewTabs" aria-label="表示切替">
         <button id="cardsViewButton" class="isActive" type="button">カード</button>
-        <button id="treeViewButton" type="button">階層表</button>
+        <button id="treeViewButton" type="button">機能階層</button>
       </nav>
 
       <section class="summaryGrid" aria-label="進捗サマリー">
@@ -166,20 +166,20 @@
           <div class="treeTableHeader">
             <div>
               <p id="treeScope" class="eyebrow"></p>
-              <h2>LV3 進捗表</h2>
+              <h2>LV1 / LV2 / LV3 機能階層</h2>
             </div>
           </div>
           <div class="tableScroller">
             <table class="progressTable">
               <thead>
                 <tr>
+                  <th rowspan="2">階層</th>
+                  <th rowspan="2">英語名</th>
+                  <th rowspan="2">日本語名</th>
                   <th rowspan="2">機能ID</th>
-                  <th rowspan="2">LV3分類</th>
-                  <th rowspan="2">機能名</th>
-                  <th rowspan="2">要件</th>
                   <th rowspan="2">担当者</th>
-                  <th colspan="11">フロント・エンド + BFF</th>
-                  <th rowspan="2">備考</th>
+                  <th colspan="11">実装進捗</th>
+                  <th rowspan="2">状態</th>
                 </tr>
                 <tr>
                   <th>phase0</th>
@@ -202,6 +202,7 @@
       </section>
     </main>
 
+    <script src="./structure-data.js"></script>
     <script src="./app.js"></script>
   </body>
 </html>

@@ -9,6 +9,8 @@ let selectedId = null;
 let currentView = "cards";
 let selectedLv1 = "";
 let selectedLv2 = "";
+const expandedLv1 = new Set();
+const expandedLv2 = new Set();
 
 const cardList = document.querySelector("#cardList");
 const cardsView = document.querySelector("#cardsView");
@@ -100,7 +102,7 @@ function bindEvents() {
 }
 
 async function loadStructureMap() {
-  structureItems = [];
+  structureItems = Array.isArray(window.STEERING_STRUCTURE_ITEMS) ? window.STEERING_STRUCTURE_ITEMS : [];
 }
 
 async function selectAndScanFolder() {
@@ -120,11 +122,18 @@ async function selectAndScanFolder() {
     return;
   }
 
+  if (selected.name === ".steering-shared") {
+    scannedItems = await scanSteering(selected, ".steering-shared");
+    dashboardData = buildDashboardData(scannedItems);
+    selectedId = dashboardData.items[0]?.id ?? null;
+    render();
+    return;
+  }
+
   const sharedHandle = await getDirectoryHandleIfExists(selected, ".steering-shared");
   if (sharedHandle) {
     scannedItems = await scanSteering(sharedHandle, ".steering-shared");
     dashboardData = buildDashboardData(scannedItems);
-    ensureTreeSelection();
     selectedId = dashboardData.items[0]?.id ?? null;
     render();
     return;
@@ -208,6 +217,8 @@ function parseStructureText(text) {
   const items = [];
   let lv1 = "";
   let lv2 = "";
+  let lv1Name = "";
+  let lv2Name = "";
 
   for (const line of text.split(/\r?\n/)) {
     if (!line.includes("# LV")) continue;
@@ -224,16 +235,22 @@ function parseStructureText(text) {
 
     if (level === "LV1") {
       lv1 = dir;
+      lv1Name = label.trim();
       lv2 = "";
+      lv2Name = "";
     } else if (level === "LV2") {
       lv2 = dir;
+      lv2Name = label.trim();
     } else if (level === "LV3") {
       items.push({
         featureId: featureId || dir.toUpperCase(),
         featureName: label.trim(),
         lv1,
+        lv1Name,
         lv2,
+        lv2Name,
         lv3: dir,
+        lv3Name: label.trim(),
         featurePath: ["product/frontend/src/features", lv1, lv2, dir].filter(Boolean).join("/"),
       });
     }
@@ -270,17 +287,22 @@ function parseStateFile(text, statePath) {
 
 function toDashboardItemFromState(state) {
   const fromStructure =
-    structureItems.find((item) => item.featureId === state.featureId) ??
     structureItems.find((item) => normalize(item.lv3).includes(normalize(state.featureSlug))) ??
+    structureItems.find((item) => item.originalFeatureId === state.featureId) ??
+    structureItems.find((item) => item.featureId === state.featureId) ??
     {};
+  const featureId = fromStructure.featureId || state.featureId;
 
   return {
-    id: makeId(state.featureId, state.owner, fromStructure.lv3 || state.featureSlug),
-    featureId: state.featureId,
+    id: makeId(featureId, state.owner, fromStructure.lv3 || state.featureSlug),
+    featureId,
     featureName: fromStructure.featureName || state.featureName,
     lv1: fromStructure.lv1 || "",
+    lv1Name: fromStructure.lv1Name || "",
     lv2: fromStructure.lv2 || "",
+    lv2Name: fromStructure.lv2Name || "",
     lv3: fromStructure.lv3 || state.featureSlug,
+    lv3Name: fromStructure.lv3Name || fromStructure.featureName || state.featureName,
     featurePath: fromStructure.featurePath || "",
     owner: state.owner,
     status: state.status,
@@ -314,7 +336,11 @@ function buildDashboardData(states) {
       fePhase: -1,
       bffPhase: -1,
     };
-    existing.owner = stateItem.owner;
+    if (!existing.owner || existing.owner === UNASSIGNED_OWNER) {
+      existing.owner = stateItem.owner;
+    } else if (stateItem.owner && stateItem.owner !== UNASSIGNED_OWNER && !existing.owner.split(", ").includes(stateItem.owner)) {
+      existing.owner = `${existing.owner}, ${stateItem.owner}`;
+    }
     existing.status = stateItem.status;
     existing.note = stateItem.note || existing.note;
     existing.steeringPath = stateItem.steeringPath || existing.steeringPath;
@@ -355,8 +381,11 @@ function normalizeItem(item) {
     featureId: String(item.featureId || ""),
     featureName: String(item.featureName || ""),
     lv1: String(item.lv1 || ""),
+    lv1Name: String(item.lv1Name || ""),
     lv2: String(item.lv2 || ""),
+    lv2Name: String(item.lv2Name || ""),
     lv3: String(item.lv3 || ""),
+    lv3Name: String(item.lv3Name || item.featureName || ""),
     featurePath: String(item.featurePath || ""),
     owner: String(item.owner || UNASSIGNED_OWNER),
     status: String(item.status || "not-started"),
@@ -421,7 +450,7 @@ function getVisibleItems() {
     const haystack = [item.featureId, item.featureName, item.lv1, item.lv2, item.lv3, item.owner, item.status, item.featurePath]
       .join(" ")
       .toLowerCase();
-    const phaseNumber = Math.max(item.fePhase, item.bffPhase);
+    const phaseNumber = Math.max(item.fePhase, item.bffPhase, 0);
     return (!query || haystack.includes(query)) && (!owner || item.owner === owner) && (phase === "" || phaseNumber === Number(phase));
   });
 }
@@ -458,6 +487,8 @@ function renderCards() {
     const card = document.createElement("button");
     card.type = "button";
     card.className = `featureCard${item.id === selectedId ? " isSelected" : ""}`;
+    card.style.setProperty("--card-bg", getLv1Color(item.lv1));
+    card.style.setProperty("--card-border", getLv1BorderColor(item.lv1));
     card.addEventListener("click", () => {
       selectedId = item.id;
       renderCards();
@@ -508,39 +539,116 @@ function renderCompactTrack(completedPhase) {
 function renderHierarchy() {
   if (!treeTableBody) return;
 
-  const rows = dashboardData.items;
-  treeScope.textContent = `All features: ${rows.length}`;
+  const rows = getVisibleItems();
+  treeScope.textContent = `LV3: ${rows.length} / LV1: ${groupBy(rows, "lv1").length}`;
 
-  function getDomainFromCode(code) {
-    const match = code.match(/^([A-Z]+)/);
-    return match ? match[1] : "";
+  const html = [];
+  for (const [lv1, lv1Items] of groupBy(rows, "lv1")) {
+    const lv1Label = lv1Items[0]?.lv1Name || lv1;
+    const lv1Key = makeTreeKey(lv1);
+    const lv1Open = expandedLv1.has(lv1Key);
+    html.push(renderTreeSummaryRow("LV1", lv1, lv1Label, lv1Items, lv1Open, lv1Key));
+
+    if (!lv1Open) continue;
+    for (const [lv2, lv2Items] of groupBy(lv1Items, "lv2")) {
+      const lv2Label = lv2Items[0]?.lv2Name || lv2;
+      const lv2Key = makeTreeKey(lv1, lv2);
+      const lv2Open = expandedLv2.has(lv2Key);
+      html.push(renderTreeSummaryRow("LV2", lv2, lv2Label, lv2Items, lv2Open, lv2Key));
+
+      if (!lv2Open) continue;
+      for (const item of lv2Items.sort((a, b) => a.featureId.localeCompare(b.featureId, "ja"))) {
+        html.push(renderLv3Row(item));
+      }
+    }
   }
 
-  treeTableBody.innerHTML = rows
-    .map((item) => {
-      const domain = getDomainFromCode(item.featureId);
-      const maxPhase = Math.max(item.fePhase, item.bffPhase);
-      const phaseCells = Array.from({ length: 11 }, (_, index) => {
-        const className = index <= maxPhase ? "phase-check done" : "phase-check";
-        return `<td><span class="${className}"></span></td>`;
-      }).join("");
+  treeTableBody.innerHTML = html.join("");
 
-      return `
-        <tr data-domain="${escapeHtml(domain)}">
-          <td><strong>${escapeHtml(item.featureId)}</strong></td>
-          <td>${escapeHtml(item.lv3)}</td>
-          <td class="tableFeatureName">${escapeHtml(item.featureName || item.lv3)}</td>
-          <td style="font-size:11px;">${escapeHtml(item.note || "")}</td>
-          <td>${escapeHtml(item.owner)}</td>
-          ${phaseCells}
-          <td style="font-size:11px;">${escapeHtml(statusLabels[item.status] ?? item.status)}</td>
-        </tr>
-      `;
-    })
-    .join("");
+  treeTableBody.querySelectorAll("[data-toggle-lv1]").forEach((row) => {
+    row.addEventListener("click", () => {
+      toggleSet(expandedLv1, row.dataset.toggleLv1);
+      renderHierarchy();
+    });
+  });
+  treeTableBody.querySelectorAll("[data-toggle-lv2]").forEach((row) => {
+    row.addEventListener("click", () => {
+      toggleSet(expandedLv2, row.dataset.toggleLv2);
+      renderHierarchy();
+    });
+  });
 
   if (!rows.length) {
     treeTableBody.innerHTML = '<tr><td colspan="17">No LV3 items to display.</td></tr>';
+  }
+}
+
+function renderTreeSummaryRow(level, englishName, japaneseName, items, isOpen, key) {
+  const maxPhase = Math.max(...items.map((item) => Math.max(item.fePhase, item.bffPhase)), -1);
+  const phaseCells = renderPhaseCells(maxPhase);
+  const owners = [...new Set(items.map((item) => item.owner).filter((owner) => owner && owner !== UNASSIGNED_OWNER))]
+    .slice(0, 3)
+    .join(", ");
+  const toggleAttr = level === "LV1" ? `data-toggle-lv1="${escapeHtml(key)}"` : `data-toggle-lv2="${escapeHtml(key)}"`;
+  const featureIdText = level === "LV1" ? getFeaturePrefix(items[0]?.featureId) : "";
+  const rowColor = getLv1Color(items[0]?.lv1);
+
+  return `
+    <tr class="treeRow ${level.toLowerCase()}Row" style="--row-bg: ${rowColor};" ${toggleAttr}>
+      <td><button type="button" class="treeToggle">${isOpen ? "v" : ">"}</button>${level}</td>
+      <td><strong>${escapeHtml(englishName)}</strong></td>
+      <td class="tableFeatureName">${escapeHtml(japaneseName)}</td>
+      <td><strong>${escapeHtml(featureIdText)}</strong></td>
+      <td>${escapeHtml(owners || UNASSIGNED_OWNER)}</td>
+      ${phaseCells}
+      <td>${escapeHtml(getGroupStatus(items))}</td>
+    </tr>
+  `;
+}
+
+function renderLv3Row(item) {
+  const maxPhase = Math.max(item.fePhase, item.bffPhase);
+  const rowColor = getLv1Color(item.lv1);
+  return `
+    <tr class="treeRow lv3Row" style="--row-bg: ${rowColor};">
+      <td>LV3</td>
+      <td>${escapeHtml(item.lv3)}</td>
+      <td class="tableFeatureName">${escapeHtml(item.lv3Name || item.featureName || item.lv3)}</td>
+      <td><strong>${escapeHtml(item.featureId)}</strong></td>
+      <td>${escapeHtml(item.owner)}</td>
+      ${renderPhaseCells(maxPhase)}
+      <td>${escapeHtml(statusLabels[item.status] ?? item.status)}</td>
+    </tr>
+  `;
+}
+
+function renderPhaseCells(maxPhase) {
+  return Array.from({ length: 11 }, (_, index) => {
+    const className = index <= maxPhase ? "phase-check done" : "phase-check";
+    return `<td><span class="${className}"></span></td>`;
+  }).join("");
+}
+
+function getFeaturePrefix(featureId) {
+  return String(featureId || "").match(/^[A-Z]{3}/)?.[0] || "";
+}
+
+function getGroupStatus(items) {
+  if (items.every((item) => item.status === "done")) return "Done";
+  if (items.some((item) => item.status === "blocked")) return "Blocked";
+  if (items.some((item) => item.status === "implement" || item.status === "review")) return "In progress";
+  return "Not started";
+}
+
+function makeTreeKey(...parts) {
+  return parts.filter(Boolean).join("::");
+}
+
+function toggleSet(set, key) {
+  if (set.has(key)) {
+    set.delete(key);
+  } else {
+    set.add(key);
   }
 }
 
@@ -566,20 +674,50 @@ function groupBy(items, key) {
 
 function getLv1Color(lv1) {
   const colors = [
-    "#eef7f7",
-    "#f7f1e8",
-    "#eef4fb",
-    "#f3f0fa",
-    "#edf6ec",
-    "#fbf0f0",
-    "#f1f5e8",
-    "#eef2f4",
-    "#f8eef5",
-    "#f0f6f2",
+    "#e3f2fd",
+    "#fff9c4",
+    "#e8f5e9",
+    "#fce4ec",
+    "#e8eaf6",
+    "#fff3e0",
+    "#f3e5f5",
+    "#e0f7fa",
+    "#f1f8e9",
+    "#fbe9e7",
+    "#e0f2f1",
+    "#f9fbe7",
+    "#ede7f6",
+    "#fff8e1",
+    "#eceff1",
+    "#e8f4f8",
   ];
-  let hash = 0;
-  for (const char of String(lv1)) hash = (hash * 31 + char.charCodeAt(0)) % 9973;
-  return colors[hash % colors.length];
+  const lv1List = [...new Set(structureItems.map((item) => item.lv1).filter(Boolean))];
+  const index = Math.max(lv1List.indexOf(lv1), 0);
+  return colors[index % colors.length];
+}
+
+function getLv1BorderColor(lv1) {
+  const colors = [
+    "#64b5f6",
+    "#fbc02d",
+    "#81c784",
+    "#f48fb1",
+    "#9fa8da",
+    "#ffb74d",
+    "#ce93d8",
+    "#4dd0e1",
+    "#aed581",
+    "#ffab91",
+    "#80cbc4",
+    "#dce775",
+    "#b39ddb",
+    "#ffd54f",
+    "#b0bec5",
+    "#81c4d7",
+  ];
+  const lv1List = [...new Set(structureItems.map((item) => item.lv1).filter(Boolean))];
+  const index = Math.max(lv1List.indexOf(lv1), 0);
+  return colors[index % colors.length];
 }
 
 function renderDetail() {
@@ -627,7 +765,7 @@ function extractFeatureId(value) {
 }
 
 function makeId(featureId, owner, lv3) {
-  return `${featureId || "UNKNOWN"}::${owner || UNASSIGNED_OWNER}::${lv3 || ""}`;
+  return `${featureId || "UNKNOWN"}::${lv3 || ""}`;
 }
 
 function normalize(value) {
