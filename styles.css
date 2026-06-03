@@ -219,7 +219,7 @@ button:hover,
   border-radius: 8px;
   background: var(--panel);
   box-shadow: var(--shadow);
-  padding: 14px;
+  padding: 10px;
 }
 
 .treeTabsPanel h2,
@@ -255,11 +255,12 @@ button:hover,
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 .tableScroller {
   overflow: auto;
+  max-height: calc(100vh - 190px);
 }
 
 .progressTable {
@@ -272,7 +273,7 @@ button:hover,
 .progressTable th,
 .progressTable td {
   border-bottom: 1px solid var(--line);
-  padding: 10px;
+  padding: 7px 8px;
   text-align: left;
   vertical-align: middle;
 }
@@ -288,6 +289,10 @@ button:hover,
   border: 1px solid #ffffff;
   padding: 8px 6px;
   text-align: center;
+}
+
+.progressTable thead tr:nth-child(2) th {
+  top: 33px;
 }
 
 .progressTable tr {
@@ -327,6 +332,18 @@ button:hover,
   border-radius: 6px;
   font-weight: 800;
   line-height: 1;
+}
+
+.ownerSelect {
+  width: 100%;
+  min-width: 104px;
+  min-height: 30px;
+  border: 1px solid rgba(24, 32, 36, 0.18);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  padding: 2px 8px;
+  font-size: 12px;
 }
 
 .tableFeatureName {
@@ -620,13 +637,13 @@ button:hover,
 }
 
 /* Phase列の幅を制限 */
-.progressTable th:nth-child(n+7):nth-child(-n+17) {
+.progressTable th:nth-child(n+8):nth-child(-n+18) {
   min-width: 50px;
   max-width: 50px;
   font-size: 10px;
 }
 
-.progressTable td:nth-child(n+7):nth-child(-n+17) {
+.progressTable td:nth-child(n+8):nth-child(-n+18) {
   text-align: center;
   min-width: 50px;
   max-width: 50px;

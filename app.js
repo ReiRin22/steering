@@ -11,6 +11,7 @@ let selectedLv1 = "";
 let selectedLv2 = "";
 const expandedLv1 = new Set();
 const expandedLv2 = new Set();
+const selectedLayerOwners = new Map();
 
 const cardList = document.querySelector("#cardList");
 const cardsView = document.querySelector("#cardsView");
@@ -316,6 +317,8 @@ function toDashboardItemFromState(state) {
     bffUpdatedAt: state.layer === "BFF" ? state.updatedAt : 0,
     feSteeringPath: state.layer === "FE" ? state.steeringPath : "",
     bffSteeringPath: state.layer === "BFF" ? state.steeringPath : "",
+    feCandidates: state.layer === "FE" ? [toLayerCandidate(state)] : [],
+    bffCandidates: state.layer === "BFF" ? [toLayerCandidate(state)] : [],
     note: state.progress,
     steeringPath: state.steeringPath,
   };
@@ -339,6 +342,8 @@ function buildDashboardData(states) {
       bffUpdatedAt: 0,
       feSteeringPath: "",
       bffSteeringPath: "",
+      feCandidates: [],
+      bffCandidates: [],
       note: "",
       steeringPath: "",
     });
@@ -355,6 +360,8 @@ function buildDashboardData(states) {
       bffUpdatedAt: 0,
       feSteeringPath: "",
       bffSteeringPath: "",
+      feCandidates: [],
+      bffCandidates: [],
     };
     existing.status = stateItem.status;
     existing.note = stateItem.note || existing.note;
@@ -371,6 +378,8 @@ function buildDashboardData(states) {
       existing.bffUpdatedAt = stateItem.bffUpdatedAt;
       existing.bffSteeringPath = stateItem.bffSteeringPath;
     }
+    existing.feCandidates = mergeLayerCandidates(existing.feCandidates, stateItem.feCandidates);
+    existing.bffCandidates = mergeLayerCandidates(existing.bffCandidates, stateItem.bffCandidates);
     existing.owner = getDisplayOwners(existing);
     keyed.set(stateItem.id, existing);
   }
@@ -381,6 +390,8 @@ function buildDashboardData(states) {
     if (item) Object.assign(item, patch, { id });
   }
   for (const item of keyed.values()) {
+    item.feCandidates = sortLayerCandidates(item.feCandidates);
+    item.bffCandidates = sortLayerCandidates(item.bffCandidates);
     item.owner = getDisplayOwners(item);
   }
 
@@ -426,6 +437,8 @@ function normalizeItem(item) {
     bffUpdatedAt: Number.isFinite(Number(item.bffUpdatedAt)) ? Number(item.bffUpdatedAt) : 0,
     feSteeringPath: String(item.feSteeringPath || ""),
     bffSteeringPath: String(item.bffSteeringPath || ""),
+    feCandidates: Array.isArray(item.feCandidates) ? item.feCandidates : [],
+    bffCandidates: Array.isArray(item.bffCandidates) ? item.bffCandidates : [],
     note: String(item.note || ""),
     steeringPath: String(item.steeringPath || ""),
   };
@@ -612,9 +625,15 @@ function renderHierarchy() {
       renderHierarchy();
     });
   });
+  treeTableBody.querySelectorAll("[data-layer-owner-select]").forEach((select) => {
+    select.addEventListener("change", () => {
+      selectedLayerOwners.set(select.dataset.layerOwnerSelect, select.value);
+      renderHierarchy();
+    });
+  });
 
   if (!rows.length) {
-    treeTableBody.innerHTML = '<tr><td colspan="18">No LV3 items to display.</td></tr>';
+    treeTableBody.innerHTML = '<tr><td colspan="19">No LV3 items to display.</td></tr>';
   }
 }
 
@@ -631,6 +650,7 @@ function renderTreeSummaryRow(level, englishName, japaneseName, items, isOpen, k
       <td><strong>${escapeHtml(featureIdText)}</strong></td>
       <td></td>
       <td></td>
+      <td></td>
       ${renderEmptyPhaseCells()}
       <td></td>
     </tr>
@@ -638,19 +658,23 @@ function renderTreeSummaryRow(level, englishName, japaneseName, items, isOpen, k
 }
 
 function renderLv3Rows(item) {
-  return renderLv3LayerRow(item, "FE", item.fePhase, item.feOwner) + renderLv3LayerRow(item, "BFF", item.bffPhase, item.bffOwner);
+  return renderLv3LayerRow(item, "FE", item.fePhase, item.feOwner, item.feCandidates, true) +
+    renderLv3LayerRow(item, "BFF", item.bffPhase, item.bffOwner, item.bffCandidates, false);
 }
 
-function renderLv3LayerRow(item, layer, phase, owner) {
+function renderLv3LayerRow(item, layer, phase, owner, candidates, showSharedColumns) {
   const rowColor = getLv1Color(item.lv1);
+  const selectedCandidate = getSelectedLayerCandidate(item, layer, owner, candidates);
+  const ownerSelect = renderLayerOwnerSelect(item, layer, selectedCandidate.owner, candidates);
   return `
     <tr class="treeRow lv3Row" style="--row-bg: ${rowColor};">
       <td>LV3</td>
-      <td>${escapeHtml(item.lv3)}</td>
-      <td class="tableFeatureName">${escapeHtml(item.lv3Name || item.featureName || item.lv3)}</td>
-      <td><strong>${escapeHtml(item.featureId)}</strong></td>
+      <td>${showSharedColumns ? escapeHtml(item.lv3) : ""}</td>
+      <td class="tableFeatureName">${showSharedColumns ? escapeHtml(item.lv3Name || item.featureName || item.lv3) : ""}</td>
+      <td><strong>${showSharedColumns ? escapeHtml(item.featureId) : ""}</strong></td>
       <td><strong>${escapeHtml(layer)}</strong></td>
-      <td>${escapeHtml(owner || UNASSIGNED_OWNER)}</td>
+      <td>${ownerSelect}</td>
+      <td>${escapeHtml(formatDateNumber(selectedCandidate.updatedAt))}</td>
       ${renderPhaseCells(phase)}
       <td>${escapeHtml(statusLabels[item.status] ?? item.status)}</td>
     </tr>
@@ -666,6 +690,68 @@ function renderPhaseCells(maxPhase) {
 
 function renderEmptyPhaseCells() {
   return Array.from({ length: 11 }, () => "<td></td>").join("");
+}
+
+function renderLayerOwnerSelect(item, layer, owner, candidates) {
+  const key = `${item.id}::${layer}`;
+  const options = sortLayerCandidates(candidates);
+  const selectedOwner = selectedLayerOwners.get(key) || owner || options[0]?.owner || UNASSIGNED_OWNER;
+
+  if (options.length <= 1) {
+    return escapeHtml(selectedOwner);
+  }
+
+  return `
+    <select class="ownerSelect" data-layer-owner-select="${escapeHtml(key)}" aria-label="${escapeHtml(layer)}担当者">
+      ${options
+        .map((candidate) => {
+          const selected = candidate.owner === selectedOwner ? " selected" : "";
+          return `<option value="${escapeHtml(candidate.owner)}"${selected}>${escapeHtml(candidate.owner)}</option>`;
+        })
+        .join("")}
+    </select>
+  `;
+}
+
+function getSelectedLayerCandidate(item, layer, owner, candidates) {
+  const key = `${item.id}::${layer}`;
+  const options = sortLayerCandidates(candidates);
+  const selectedOwner = selectedLayerOwners.get(key) || owner || options[0]?.owner || UNASSIGNED_OWNER;
+  return options.find((candidate) => candidate.owner === selectedOwner) || {
+    owner: selectedOwner,
+    updatedAt: 0,
+    phase: -1,
+    steeringPath: "",
+  };
+}
+
+function toLayerCandidate(state) {
+  return {
+    owner: state.owner || UNASSIGNED_OWNER,
+    updatedAt: state.updatedAt || 0,
+    phase: state.completedPhase,
+    steeringPath: state.steeringPath,
+  };
+}
+
+function mergeLayerCandidates(current = [], incoming = []) {
+  const byOwner = new Map();
+  for (const candidate of [...current, ...incoming]) {
+    if (!candidate?.owner) continue;
+    const existing = byOwner.get(candidate.owner);
+    if (!existing || candidate.updatedAt >= existing.updatedAt) {
+      byOwner.set(candidate.owner, candidate);
+    }
+  }
+  return [...byOwner.values()];
+}
+
+function sortLayerCandidates(candidates = []) {
+  return [...candidates].sort((a, b) => {
+    const dateCompare = (b.updatedAt || 0) - (a.updatedAt || 0);
+    if (dateCompare !== 0) return dateCompare;
+    return String(a.owner || "").localeCompare(String(b.owner || ""), "ja");
+  });
 }
 
 function getFeaturePrefix(featureId) {
@@ -810,6 +896,12 @@ function extractFeatureId(value) {
 
 function extractDateNumber(value) {
   return Number(String(value || "").match(/^\d{8}/)?.[0] || 0);
+}
+
+function formatDateNumber(value) {
+  const text = String(value || "");
+  if (!/^\d{8}$/.test(text)) return "";
+  return `${text.slice(0, 4)}-${text.slice(4, 6)}-${text.slice(6, 8)}`;
 }
 
 function makeId(featureId, owner, lv3) {
